@@ -13,6 +13,10 @@ struct Barang {
     float berat;
 };
 
+#define RESET   "\033[0m"
+#define BLUE    "\033[34m"
+#define YELLOW  "\033[33m"
+
 
 //[GENERATOR]
 // Ini generate barang dengan berat antara 0 sampai 1000
@@ -29,24 +33,10 @@ vector<Barang> generateBarang(int jumlah) {
     return data;
 }
 
-//[INSERTION SORT]
-void insertionSort(vector<Barang>& data) {
-    int n = data.size();
-    for (int i = 1; i < n; i++) {
-        Barang key = data[i];
-        int j = i - 1;
 
-        while (j >= 0 && data[j].berat > key.berat) {
-            data[j + 1] = data[j];
-            j--;
-        }
-        data[j + 1] = key;
-    }
-}
 
-//[MERGE SORT]
-//Bagian combine
-void merge(vector<Barang>& data, int left, int mid, int right) {
+//Bagian combine ITERATIVE
+void mergeIterative(vector<Barang>& data, int left, int mid, int right) {
     int n1 = mid - left + 1;
     int n2 = right - mid;
 
@@ -72,13 +62,63 @@ void merge(vector<Barang>& data, int left, int mid, int right) {
     while (j < n2)
         data[k++] = R[j++];
 }
-//bagian divide
-void mergeSort(vector<Barang>& data, int left, int right) {
+// merge sort ITERATIVE
+void mergeSortIterative(vector<Barang>& data) {
+    int n = data.size();
+
+    for (int size = 1; size < n; size *= 2) {
+        for (int left = 0; left < n - 1; left += 2 * size) {
+            int mid = min(left + size - 1, n - 1);
+            int right = min(left + 2 * size - 1, n - 1);
+
+            if (mid < right)
+                mergeIterative(data, left, mid, right);
+        }
+    }
+}
+
+
+
+//Bagian combine RECURSIVE
+void mergeRecursiveStep(
+    vector<Barang>& data,
+    vector<Barang>& L,
+    vector<Barang>& R,
+    int i, int j, int k
+) {
+    if (i == L.size() && j == R.size())
+        return;
+
+    if (i == L.size()) {
+        data[k] = R[j];
+        mergeRecursiveStep(data, L, R, i, j + 1, k + 1);
+    }
+    else if (j == R.size()) {
+        data[k] = L[i];
+        mergeRecursiveStep(data, L, R, i + 1, j, k + 1);
+    }
+    else if (L[i].berat <= R[j].berat) {
+        data[k] = L[i];
+        mergeRecursiveStep(data, L, R, i + 1, j, k + 1);
+    }
+    else {
+        data[k] = R[j];
+        mergeRecursiveStep(data, L, R, i, j + 1, k + 1);
+    }
+}
+void mergeRecursive(vector<Barang>& data, int left, int mid, int right) {
+    vector<Barang> L(data.begin() + left, data.begin() + mid + 1);
+    vector<Barang> R(data.begin() + mid + 1, data.begin() + right + 1);
+
+    mergeRecursiveStep(data, L, R, 0, 0, left);
+}
+// merge sort RECURSIVE
+void mergeSortRecursive(vector<Barang>& data, int left, int right) {
     if (left < right) {
         int mid = left + (right - left) / 2;
-        mergeSort(data, left, mid);
-        mergeSort(data, mid + 1, right);
-        merge(data, left, mid, right);
+        mergeSortRecursive(data, left, mid);
+        mergeSortRecursive(data, mid + 1, right);
+        mergeRecursive(data, left, mid, right);
     }
 }
 
@@ -87,34 +127,31 @@ int main() {
 
     int i;
     int JUMLAH_BARANG = 100;
-    for (i = 1; i <= 4; i++){
+    for (i = 1; i <= 30; i++){
         cout << "\n\nGenerate data inventori...\n";
         vector<Barang> dataAwal = generateBarang(JUMLAH_BARANG);
 
-        vector<Barang> dataInsertion = dataAwal;
-        vector<Barang> dataMerge = dataAwal;
+        vector<Barang> dataRecursive = dataAwal;
+        vector<Barang> dataIterative = dataAwal;
 
-        cout << "Menjalankan Insertion Sort...\n";
-        auto startInsertion = high_resolution_clock::now();
-        insertionSort(dataInsertion);
-        auto endInsertion = high_resolution_clock::now();
-        auto waktuInsertion = duration_cast<milliseconds>(
-            endInsertion - startInsertion
-        ).count();
+        cout << "Menjalankan Merge Sort Recursive...\n";
+        auto startRec = high_resolution_clock::now();
+        mergeSortRecursive(dataRecursive, 0, dataRecursive.size() - 1);
+        auto endRec = high_resolution_clock::now();
+        auto waktuRec = duration_cast<milliseconds>(endRec - startRec).count();
 
-        cout << "Menjalankan Merge Sort...\n";
-        auto startMerge = high_resolution_clock::now();
-        mergeSort(dataMerge, 0, dataMerge.size() - 1);
-        auto endMerge = high_resolution_clock::now();
-        auto waktuMerge = duration_cast<milliseconds>(
-            endMerge - startMerge
-        ).count();
+        cout << "Menjalankan Merge Sort Iterative...\n";
+        auto startIter = high_resolution_clock::now();
+        mergeSortIterative(dataIterative);
+        auto endIter = high_resolution_clock::now();
+        auto waktuIter = duration_cast<milliseconds>(endIter - startIter).count();
 
-        cout << "\n===== TEST CASE NO." << i << " =====\n";
-        cout << "Jumlah Barang   : " << JUMLAH_BARANG << endl;
-        cout << "Insertion Sort : " << waktuInsertion << " ms\n";
-        cout << "Merge Sort     : " << waktuMerge << " ms\n";
-        JUMLAH_BARANG *= 7;
+        cout << "\n===== TEST CASE NO." << i << " =====\n"
+        << "Items : " << BLUE << JUMLAH_BARANG << RESET
+        << "\nRecursive : " << YELLOW << waktuRec << RESET << " ms"
+        << "\nIterative : " << YELLOW << waktuIter << RESET << " ms";
+
+        JUMLAH_BARANG *= 1.5;
     }
     return 0;
 }
