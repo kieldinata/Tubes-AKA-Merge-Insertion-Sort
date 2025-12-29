@@ -8,18 +8,39 @@
 using namespace std;
 using namespace chrono;
 
+// ================== WARNA ==================
+#define RESET   "\033[0m"
+#define BLUE    "\033[34m"
+#define YELLOW  "\033[33m"
+
+// ================== STRUCT ==================
 struct Barang {
     string nama;
     float berat;
 };
 
-#define RESET   "\033[0m"
-#define BLUE    "\033[34m"
-#define YELLOW  "\033[33m"
+// ================== MEMORY TRACKER ==================
+size_t totalAllocated = 0;
 
+void* operator new(size_t size) {
+    totalAllocated += size;
+    return malloc(size);
+}
 
-//[GENERATOR]
-// Ini generate barang dengan berat antara 0 sampai 1000
+void* operator new[](size_t size) {
+    totalAllocated += size;
+    return malloc(size);
+}
+
+void operator delete(void* ptr) noexcept {
+    free(ptr);
+}
+
+void operator delete[](void* ptr) noexcept {
+    free(ptr);
+}
+
+// untuk generate barang secara acak
 vector<Barang> generateBarang(int jumlah) {
     vector<Barang> data;
     data.reserve(jumlah);
@@ -27,15 +48,13 @@ vector<Barang> generateBarang(int jumlah) {
     for (int i = 0; i < jumlah; i++) {
         Barang b;
         b.nama = "Barang_" + to_string(i + 1);
-        b.berat = (rand() % 10000) / 10.0f; 
+        b.berat = (rand() % 10000) / 10.0f;
         data.push_back(b);
     }
     return data;
 }
 
 
-
-//Bagian combine dari merge sort
 void combine(vector<Barang>& data, int left, int mid, int right) {
     int n1 = mid - left + 1;
     int n2 = right - mid;
@@ -62,7 +81,17 @@ void combine(vector<Barang>& data, int left, int mid, int right) {
     while (j < n2)
         data[k++] = R[j++];
 }
-// merge sort ITERATIVE
+
+void mergeSortRecursive(vector<Barang>& data, int left, int right) {
+    if (left < right) {
+        int mid = left + (right - left) / 2;
+        mergeSortRecursive(data, left, mid);
+        mergeSortRecursive(data, mid + 1, right);
+        combine(data, left, mid, right);
+    }
+}
+
+
 void mergeSortIterative(vector<Barang>& data) {
     int n = data.size();
 
@@ -77,45 +106,47 @@ void mergeSortIterative(vector<Barang>& data) {
     }
 }
 
-// merge sort RECURSIVE
-void mergeSortRecursive(vector<Barang>& data, int left, int right) {
-    if (left < right) {
-        int mid = left + (right - left) / 2;
-        mergeSortRecursive(data, left, mid);
-        mergeSortRecursive(data, mid + 1, right);
-        combine(data, left, mid, right);
-    }
-}
 
 int main() {
     srand(time(0));
-    vector<Barang> dataAwal;
-    vector<Barang> dataRecursive;
-    vector<Barang> dataIterative;
-    int i;
+
+    int jumlahTest;
     int JUMLAH_BARANG = 10;
-    for (i = 1; i <= 40; i++){
 
-        dataAwal = generateBarang(JUMLAH_BARANG);
-        dataRecursive = dataAwal;
-        dataIterative = dataAwal;
+    cout << "Jumlah testcase: ";
+    cin >> jumlahTest;
 
+    for (int i = 1; i <= jumlahTest; i++) {
+
+        vector<Barang> dataAwal = generateBarang(JUMLAH_BARANG);
+        vector<Barang> dataRecursive = dataAwal;
+        vector<Barang> dataIterative = dataAwal;
+
+        // rekursif
+        totalAllocated = 0;
         auto startRec = high_resolution_clock::now();
         mergeSortRecursive(dataRecursive, 0, dataRecursive.size() - 1);
         auto endRec = high_resolution_clock::now();
         auto waktuRec = duration_cast<milliseconds>(endRec - startRec).count();
+        size_t memRec = totalAllocated;
 
+        // iteratif
+        totalAllocated = 0;
         auto startIter = high_resolution_clock::now();
         mergeSortIterative(dataIterative);
         auto endIter = high_resolution_clock::now();
         auto waktuIter = duration_cast<milliseconds>(endIter - startIter).count();
+        size_t memIter = totalAllocated;
 
         cout << "\n===== TEST CASE NO." << i << " ====="
-        << "\nItems : " << BLUE << JUMLAH_BARANG << RESET
-        << "\nRecursive : " << YELLOW << waktuRec << RESET << " ms"
-        << "\nIterative : " << YELLOW << waktuIter << RESET << " ms";
+             << "\nItems : " << BLUE << JUMLAH_BARANG << RESET
+             << "\nRecursive : " << YELLOW << waktuRec << RESET << " ms"
+             << " | Memory : " << YELLOW << memRec << RESET << " bytes"
+             << "\nIterative : " << YELLOW << waktuIter << RESET << " ms"
+             << " | Memory : " << YELLOW << memIter << RESET << " bytes\n";
 
         JUMLAH_BARANG *= 1.3;
     }
+
     return 0;
 }
